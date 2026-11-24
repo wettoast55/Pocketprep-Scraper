@@ -1,1 +1,92 @@
-*{box-sizing:border-box}body{margin:0;background:#f3f5f8;color:#172b40;font:16px/1.5 Arial,sans-serif}header{background:#173a5e;color:white;padding:20px 32px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}main{max-width:1100px;margin:40px auto;padding:0 24px}h1{font-size:32px;margin-bottom:8px}h2{font-size:21px}.panel,.exam{background:white;border:1px solid #ced7e0;border-radius:8px;padding:24px;margin:20px 0}.exam{border-top:4px solid #25659a}button,.button{display:inline-block;background:#205985;color:white;border:0;border-radius:4px;padding:11px 18px;font:inherit;cursor:pointer;text-decoration:none;margin:5px 8px 5px 0}button.secondary{background:#e4edf4;color:#183958}input,select{font:inherit;padding:10px;max-width:100%}#message{white-space:pre-wrap}.muted{color:#506273}.popup{width:360px;padding:20px;margin:0}.popup h1{font-size:22px}.popup label{display:block;margin-top:10px}.popup input{width:100%}button:focus-visible,a:focus-visible{outline:3px solid #d98d00;outline-offset:3px}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: #f3f5f8;
+  color: #172b40;
+  font:
+    16px/1.5 Arial,
+    sans-serif;
+}
+header {
+  background: #173a5e;
+  color: white;
+  padding: 20px 32px;
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+main {
+  max-width: 1100px;
+  margin: 40px auto;
+  padding: 0 24px;
+}
+h1 {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+h2 {
+  font-size: 21px;
+}
+.panel,
+.exam {
+  background: white;
+  border: 1px solid #ced7e0;
+  border-radius: 8px;
+  padding: 24px;
+  margin: 20px 0;
+}
+.exam {
+  border-top: 4px solid #25659a;
+}
+button,
+.button {
+  display: inline-block;
+  background: #205985;
+  color: white;
+  border: 0;
+  border-radius: 4px;
+  padding: 11px 18px;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  margin: 5px 8px 5px 0;
+}
+button.secondary {
+  background: #e4edf4;
+  color: #183958;
+}
+input,
+select {
+  font: inherit;
+  padding: 10px;
+  max-width: 100%;
+}
+#message {
+  white-space: pre-wrap;
+}
+.muted {
+  color: #506273;
+}
+.popup {
+  width: 360px;
+  padding: 20px;
+  margin: 0;
+}
+.popup h1 {
+  font-size: 22px;
+}
+.popup label {
+  display: block;
+  margin-top: 10px;
+}
+.popup input {
+  width: 100%;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #d98d00;
+  outline-offset: 3px;
+}
