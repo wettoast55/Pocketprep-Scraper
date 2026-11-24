@@ -38,7 +38,7 @@
       return (
         [
           ...document.querySelectorAll(
-            config[key] || defaults[key] || ":not(*)",
+            defaults[key] || config[key] || ":not(*)",
           ),
         ].find(visible) || null
       );
@@ -139,20 +139,29 @@
       );
       return marker ? Number(marker.textContent.trim()) : i + 1;
     });
+    const advertisedCount = Number(
+      list.getAttribute?.("aria-label")?.match(/List with (\d+) items/i)?.[1],
+    );
     if (
       rows.length < 2 ||
-      rows.length > 20 ||
+      rows.length > 100 ||
+      (advertisedCount && advertisedCount !== rows.length) ||
       new Set(positions).size !== rows.length ||
       positions.some((n) => !Number.isInteger(n) || n < 1 || n > rows.length)
     )
       throw new Error("The displayed correct sequence is incomplete.");
     const options = rows.map((row, i) => ({
-      key: String.fromCharCode(65 + i),
-      text: row
-        .querySelector(
+      key:
+        i < 26
+          ? String.fromCharCode(65 + i)
+          : String.fromCharCode(64 + Math.floor(i / 26)) +
+            String.fromCharCode(65 + (i % 26)),
+      text: (() => {
+        const element = row.querySelector(
           ".uikit-question-build-list-choices-container__choice-text",
-        )
-        ?.innerText.trim(),
+        );
+        return (element?.innerText || element?.textContent || "").trim();
+      })(),
     }));
     if (options.some((o) => !o.text))
       throw new Error("An ordering item is missing its text.");
@@ -269,7 +278,7 @@
     };
   }
   async function reveal() {
-    const button = get("reveal") || autoButton(/^Show Explanation$/i);
+    const button = autoButton(/^Show Explanation$/i) || get("reveal");
     if (
       button &&
       button.getAttribute("aria-expanded") !== "true" &&
@@ -291,13 +300,13 @@
         "This question is unanswered. Enable the study-history option to submit an answer.",
       );
     if (orderList()) {
-      const submit = get("submit") || autoButton(/^Check (?:answer|order)$/i);
+      const submit = autoButton(/^Check (?:answer|order)$/i) || get("submit");
       if (!submit)
         throw new Error(
           "Select the ordering question’s Check Answer control in Page setup, or submit it manually.",
         );
       clickControl(submit);
-      for (let i = 0; i < 20 && !stop && !gradedOrder(); i++) await sleep(250);
+      for (let i = 0; i < 60 && !stop && !gradedOrder(); i++) await sleep(250);
       if (!gradedOrder())
         throw new Error(
           "The ordering feedback did not appear. Saved questions are retained.",
@@ -346,14 +355,53 @@
   }
   async function saveOne() {
     await prepareStudy();
-    await reveal();
     const serial = identity();
     if (!serial) throw new Error("Question identity is unavailable.");
-    const question = await extract();
+    // Long lists and their explanations can render in separate updates. Require
+    // two matching captures before saving, and retry incomplete DOM snapshots.
+    let question,
+      previous = "",
+      lastError;
+    for (let attempt = 0; attempt < 40 && !stop; attempt++) {
+      if (identity() !== serial)
+        throw new Error("The question changed during capture. Please retry.");
+      try {
+        await reveal();
+        const candidate = await extract();
+        const snapshot = JSON.stringify(candidate);
+        if (snapshot === previous) {
+          question = candidate;
+          break;
+        }
+        previous = snapshot;
+      } catch (error) {
+        lastError = error;
+        previous = "";
+      }
+      await sleep(250);
+    }
+    if (stop) throw new Error("Collection stopped.");
+    if (!question)
+      throw (
+        lastError ||
+        new Error("Question content did not finish rendering. Please retry.")
+      );
+    const sourceSerial =
+      new URL(location.href).searchParams.get("questionSerial") ||
+      "content-" +
+        Array.from(
+          new Uint8Array(
+            await crypto.subtle.digest(
+              "SHA-256",
+              new TextEncoder().encode(serial),
+            ),
+          ),
+          (byte) => byte.toString(16).padStart(2, "0"),
+        ).join("");
     const result = await chrome.runtime.sendMessage({
       type: "saveQuestion",
       exam,
-      serial,
+      serial: sourceSerial,
       question,
     });
     if (result.error) throw new Error(result.error);
@@ -373,16 +421,14 @@
     running = true;
     stop = false;
     try {
-      let repeated = 0;
+      const visited = new Set();
       for (let i = 0; i < exam.expectedCount && !stop; i++) {
         const before = identity();
+        if (visited.has(before))
+          throw new Error("This question set looped back to an earlier item.");
+        visited.add(before);
         const result = await saveOne();
         if (!all || result.count >= exam.expectedCount) break;
-        repeated = result.duplicate ? repeated + 1 : 0;
-        if (repeated >= 3)
-          throw new Error(
-            "Stopped after three already-collected items. Navigate to an uncollected question to resume.",
-          );
         if (stop) break;
         clickControl(get("next") || autoButton(/^Next question$/i));
         let changed = false;

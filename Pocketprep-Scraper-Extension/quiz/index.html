@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <meta
       name="description"
-      content="A complete CySA+ study workspace with evidence-based questions and interactive performance labs."
+      content="Local exam study with immediate feedback and saved progress."
     />
-    <title>CompTIA CySA+ Practice Examination</title>
+    <title>Exam Study Library</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="exam.css" />
   </head>
@@ -16,9 +16,7 @@
       <a class="brand" href="#"
         ><span class="logo">PRACTICE</span
         ><span
-          >CompTIA CySA+<small
-            >Cybersecurity Analyst · Independent practice exam</small
-          ></span
+          >Exam Study Library<small>Independent practice exam</small></span
         ></a
       >
       <div class="header-right">
@@ -42,19 +40,19 @@
       <aside>
         <div class="eyebrow">YOUR WORKSPACE</div>
         <button class="nav active" data-mode="all">
-          ▦ <span>Question bank</span><b id="all-count">625</b></button
+          ▦ <span>Question bank</span><b id="all-count">0</b></button
         ><button class="nav" data-mode="mcq">
-          ◎ <span>Multiple choice</span><b>614</b></button
+          ◎ <span>Multiple choice</span><b>0</b></button
         ><button class="nav" data-mode="pbq">
-          ⌘ <span>Performance labs</span><b>11</b></button
+          ⌘ <span>Performance labs</span><b>0</b></button
         ><button class="nav" data-mode="missed">
           ↻ <span>Needs review</span><b id="missed-count">0</b></button
         ><button class="nav" data-mode="flagged">
           ⚑ <span>Flagged for review</span><b id="flag-count">0</b>
         </button>
         <div class="aside-bottom">
-          <span class="live-dot"></span> BUILT FROM YOUR PDF
-          <p>All 231 pages accounted for.<br />Original numbering preserved.</p>
+          <span class="live-dot"></span> LOCAL EXAM
+          <p>Questions stored on this device.</p>
           <button id="about" class="quiet">About / Help</button
           ><button id="reset-progress" class="quiet">Reset all progress</button>
         </div>
@@ -63,7 +61,7 @@
         <section class="intro">
           <div>
             <div class="eyebrow">PRACTICE EXAMINATION</div>
-            <h1>CySA+ practice examination</h1>
+            <h1>Practice examination</h1>
             <p>Untimed study session · Immediate answer explanations enabled</p>
           </div>
           <div class="progress-card">
@@ -72,7 +70,7 @@
             </div>
             <div class="progress-track"><div id="progress-fill"></div></div>
             <p>
-              <strong id="done-count">0</strong> of 625 reviewed
+              <strong id="done-count">0</strong> of 0 reviewed
               <span id="accuracy">— accuracy</span>
             </p>
           </div>
@@ -108,13 +106,14 @@
             </div>
             <div id="question-list"></div>
             <p class="map-help">
-              Select any number to jump.<br />Source numbering: 3–627.
+              Select any number to jump.<br />Progress is separate for each
+              exam.
             </p>
           </section>
         </div>
         <footer>
-          Independent practice tool · Not affiliated with CompTIA or Pearson VUE
-          · Not an official answer key.
+          Independent practice tool · Not affiliated with exam providers · Not
+          an official answer key.
         </footer>
       </main>
     </div>
@@ -122,6 +121,7 @@
       <button id="close-modal" class="quiet">Close ✕</button>
       <div id="modal-content"></div>
     </dialog>
+    <script src="../question-identity.js"></script>
     <script src="../store.js"></script>
     <script src="boot.js"></script>
   </body>

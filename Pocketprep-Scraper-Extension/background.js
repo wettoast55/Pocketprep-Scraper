@@ -1,6 +1,6 @@
 "use strict";
 // The service worker serializes captures to avoid lost updates from overlapping saves.
-importScripts("store.js");
+importScripts("question-identity.js", "store.js");
 let writes = Promise.resolve();
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
   if (!["saveQuestion", "collectorStatus"].includes(message.type)) return;
@@ -22,7 +22,10 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       meta.expectedCount > 20000
     )
       throw new Error("Invalid exam settings.");
-    const old = await ExamStore.get(meta.id);
+    const stored = await ExamStore.get(meta.id);
+    const old = stored ? QuestionIdentity.deduplicate(stored) : null;
+    if (old && old.questions.length !== stored.questions.length)
+      await ExamStore.put(old);
     if (message.type === "collectorStatus")
       return { count: old?.questions.length || 0 };
     const serial = message.serial;
@@ -30,14 +33,31 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       throw new Error("Question identity unavailable.");
     // Source identifiers make repeated visits idempotent.
     const serials = old?.serials || {};
-    if (Object.hasOwn(serials, serial))
-      return { count: old.questions.length, duplicate: true };
     const id =
       (old?.questions.reduce((max, q) => Math.max(max, q.id), 0) || 0) + 1;
     const checked = ExamStore.validate({
       ...meta,
       questions: [{ ...message.question, id }],
     });
+    const incoming = checked.questions[0];
+    const key = QuestionIdentity.key(incoming);
+    const duplicate = old?.questions.find(
+      (question) => QuestionIdentity.key(question) === key,
+    );
+    if (duplicate) {
+      if (
+        QuestionIdentity.solution(duplicate) !==
+        QuestionIdentity.solution(incoming)
+      )
+        throw new Error(
+          "The source gives conflicting answers for an existing question. Review it before continuing.",
+        );
+      await ExamStore.put({
+        ...old,
+        serials: { ...serials, [serial]: duplicate.id },
+      });
+      return { count: old.questions.length, duplicate: true };
+    }
     const questions = [...(old?.questions || []), checked.questions[0]];
     if (questions.length > meta.expectedCount)
       throw new Error(
@@ -47,6 +67,7 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
       ...checked,
       questions,
       serials: { ...serials, [serial]: id },
+      duplicateIds: old?.duplicateIds || {},
       source: "Pocket Prep signed-in question pages",
     });
     return { count: questions.length };

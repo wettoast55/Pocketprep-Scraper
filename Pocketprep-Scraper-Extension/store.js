@@ -54,7 +54,7 @@ globalThis.ExamStore = {
       typeof v === "string" && v.trim() && v.length <= 100000
         ? v
         : fail("Missing or invalid " + label);
-    if (!raw || !/^[-a-z0-9]{1,80}$/.test(raw.id) || raw.id === "cysa-original")
+    if (!raw || !/^[-a-z0-9]{1,80}$/.test(raw.id))
       fail(
         "Use a unique exam id containing lowercase letters, numbers and hyphens.",
       );
@@ -74,9 +74,9 @@ globalThis.ExamStore = {
       if (
         !Array.isArray(q.options) ||
         q.options.length < 2 ||
-        q.options.length > 20
+        q.options.length > 100
       )
-        fail("Question " + q.id + " needs 2–20 choices.");
+        fail("Question " + q.id + " needs 2–100 choices.");
       const keys = new Set();
       const options = q.options.map((o) => {
         if (!/^[A-Z]{1,2}$/.test(o.key) || keys.has(o.key))
@@ -125,8 +125,7 @@ globalThis.ExamStore = {
     });
     if (
       raw.expectedCount !== undefined &&
-      (!Number.isSafeInteger(raw.expectedCount) ||
-        raw.expectedCount < questions.length)
+      (!Number.isSafeInteger(raw.expectedCount) || raw.expectedCount < 1)
     )
       fail("Expected total must be at least the number imported.");
     const serials = {};
@@ -143,7 +142,26 @@ globalThis.ExamStore = {
         Object.defineProperty(serials, serial, { value: id, enumerable: true });
       }
     }
-    return {
+    const duplicateIds = {};
+    for (const [oldId, alias] of Object.entries(raw.duplicateIds || {})) {
+      if (
+        !/^[1-9]\d*$/.test(oldId) ||
+        !alias ||
+        !ids.has(alias.id) ||
+        !alias.keys ||
+        typeof alias.keys !== "object"
+      )
+        fail("Invalid duplicate question mapping.");
+      const target = questions.find((question) => question.id === alias.id);
+      for (const [key, value] of Object.entries(alias.keys))
+        if (
+          !/^[A-Z]{1,2}$/.test(key) ||
+          !target.options.some((option) => option.key === value)
+        )
+          fail("Invalid duplicate choice mapping.");
+      duplicateIds[oldId] = { id: alias.id, keys: { ...alias.keys } };
+    }
+    const bank = QuestionIdentity.deduplicate({
       id: raw.id,
       name: str(raw.name, "exam name").slice(0, 200),
       expectedCount: raw.expectedCount || questions.length,
@@ -152,7 +170,16 @@ globalThis.ExamStore = {
       ...(typeof raw.source === "string"
         ? { source: raw.source.slice(0, 500) }
         : {}),
+      version: typeof raw.version === "string" ? raw.version.slice(0, 200) : "",
+      versionDate:
+        typeof raw.versionDate === "string"
+          ? raw.versionDate.slice(0, 200)
+          : "",
+      duplicateIds,
       updatedAt: new Date().toISOString(),
-    };
+    });
+    if (bank.questions.length > bank.expectedCount)
+      fail("Expected total must be at least the unique question count.");
+    return bank;
   },
 };

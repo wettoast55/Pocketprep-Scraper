@@ -4,17 +4,21 @@
 // and page-specific collector selectors remain with the original browser.
 globalThis.LibraryBackup = {
   progressKey(examId) {
-    return examId === "cysa-original"
-      ? "cysa-practice-v1"
-      : "exam-progress:" + examId;
+    return "exam-progress:" + examId;
   },
 
   async create() {
-    const exams = await ExamStore.all();
+    const exams = (await ExamStore.all()).map((exam) =>
+      QuestionIdentity.deduplicate(exam),
+    );
     const progress = {};
-    for (const id of ["cysa-original", ...exams.map((exam) => exam.id)]) {
+    for (const id of exams.map((exam) => exam.id)) {
       const saved = localStorage.getItem(this.progressKey(id));
-      if (saved) progress[id] = JSON.parse(saved);
+      if (saved)
+        progress[id] = QuestionIdentity.remapProgress(
+          JSON.parse(saved),
+          exams.find((exam) => exam.id === id),
+        );
     }
     return {
       format: "exam-study-library",
@@ -37,7 +41,7 @@ globalThis.LibraryBackup = {
         "Choose a library backup exported by Exam Study Library.",
       );
     }
-    const ids = new Set(["cysa-original"]);
+    const ids = new Set();
     const exams = data.exams.map((raw) => {
       const exam = ExamStore.validate(raw);
       if (ids.has(exam.id)) throw new Error("Duplicate exam in backup.");
@@ -67,11 +71,11 @@ globalThis.LibraryBackup = {
       ) {
         throw new Error("Invalid saved session in backup.");
       }
-      const questions =
-        id === "cysa-original"
-          ? globalThis.QUESTION_BANK
-          : exams.find((exam) => exam.id === id).questions;
-      progress[id] = this.cleanProgress(state, questions);
+      const exam = exams.find((exam) => exam.id === id);
+      progress[id] = this.cleanProgress(
+        QuestionIdentity.remapProgress(state, exam),
+        exam.questions,
+      );
     }
     return { exams, progress };
   },
@@ -205,7 +209,7 @@ globalThis.LibraryBackup = {
   },
 
   async restore(backup) {
-    const ids = ["cysa-original", ...backup.exams.map((exam) => exam.id)];
+    const ids = backup.exams.map((exam) => exam.id);
     const previous = new Map(
       ids.map((id) => [
         this.progressKey(id),

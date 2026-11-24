@@ -10,17 +10,23 @@ function download(value, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 async function show() {
-  const exams = [
-    {
-      id: "cysa-original",
-      name: "CompTIA CySA+ · Original PDF",
-      count: 625,
-      expectedCount: 625,
-    },
-    ...(await ExamStore.all()),
-  ];
+  const exams = [];
+  for (const stored of await ExamStore.all()) {
+    const exam = QuestionIdentity.deduplicate(stored);
+    const key = "exam-progress:" + exam.id;
+    const saved = localStorage.getItem(key);
+    if (saved)
+      localStorage.setItem(
+        key,
+        JSON.stringify(QuestionIdentity.remapProgress(JSON.parse(saved), exam)),
+      );
+    exams.push(exam);
+  }
   const list = document.querySelector("#exams");
   list.replaceChildren();
+  if (!exams.length)
+    list.textContent =
+      "No exams yet. Collect authorized questions or import a bank to begin.";
   for (const exam of exams) {
     const card = document.createElement("article");
     card.className = "exam";
@@ -41,6 +47,13 @@ async function show() {
     a.href = "quiz/index.html?exam=" + encodeURIComponent(exam.id);
     a.textContent = "Study / Resume";
     card.append(h, p, a);
+    if (exam.version || exam.versionDate) {
+      const detail = document.createElement("p");
+      detail.textContent = [exam.version, exam.versionDate]
+        .filter(Boolean)
+        .join(" · ");
+      card.append(detail);
+    }
     if (exam.questions) {
       const b = document.createElement("button");
       b.className = "secondary";
@@ -86,34 +99,6 @@ document.querySelector("#file").onchange = async (e) => {
     e.target.value = "";
   }
 };
-document.querySelector("#sample").onclick = () =>
-  download(
-    {
-      id: "ccna-example",
-      name: "CCNA · Format example (not Pocket Prep)",
-      expectedCount: 1,
-      questions: [
-        {
-          id: 1,
-          type: "mcq",
-          stem: "Which OSI layer routes packets between networks?",
-          options: [
-            { key: "A", text: "Network" },
-            { key: "B", text: "Physical" },
-          ],
-          answer: ["A"],
-          explanation:
-            "The network layer provides logical addressing and routing.",
-          optionExplanations: {
-            A: "Layer 3 routes packets using logical addresses.",
-            B: "Layer 1 transmits bits over the physical medium.",
-          },
-          images: [],
-        },
-      ],
-    },
-    "exam-format-example.json",
-  );
 show().catch(
   (e) => (document.querySelector("#message").textContent = e.message),
 );
@@ -138,7 +123,7 @@ document.querySelector("#backup-import").onchange = async (event) => {
       !confirm(
         "Restore " +
           backup.exams.length +
-          " imported exams and the included progress? Matching exams and their progress, including original CySA progress, will be replaced. Other exams stay unchanged. Export a backup first if needed.",
+          " imported exams and the included progress? Matching exams and their progress, will be replaced. Other exams stay unchanged. Export a backup first if needed.",
       )
     )
       return;

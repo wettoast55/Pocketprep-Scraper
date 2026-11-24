@@ -1,9 +1,6 @@
 "use strict";
 const BANK = window.QUESTION_BANK;
-const KEY =
-  window.EXAM.id === "cysa-original"
-    ? "cysa-practice-v1"
-    : "exam-progress:" + window.EXAM.id;
+const KEY = "exam-progress:" + window.EXAM.id;
 const $ = (s) => document.querySelector(s);
 const esc = (s) =>
   String(s ?? "").replace(
@@ -447,18 +444,12 @@ $("#modal").onclick = (e) => {
   if (e.target === $("#modal")) $("#modal").close();
 };
 $("#about").onclick = () => {
-  if (window.EXAM.id !== "cysa-original") {
-    $("#modal-content").innerHTML =
-      "<h2>" +
-      esc(window.EXAM.name) +
-      "</h2><p>" +
-      BANK.length +
-      " questions stored on this device. Answers and explanations come from the imported material. Progress is saved separately for this exam. Download progress for a portable backup.</p>";
-    $("#modal").showModal();
-    return;
-  }
   $("#modal-content").innerHTML =
-    "<h2>Your complete practice bank</h2><p>625 questions, numbered 3–627, from all 231 pages of your PDF: 614 multiple-choice questions, 11 performance labs, and 138 original evidence images. Repeated questions are retained.</p><p>The PDF does not supply an answer key. Explanations are a reasoned study key; questions with missing or contradictory evidence are labeled. Unscored questions provide study feedback but do not affect accuracy.</p><p>Some PBQs refer to interactive tabs that were not captured in the PDF. Those labs clearly identify reconstructed practice evidence. The original screenshots remain available in the evidence tabs.</p><p>Selections and answers are automatically saved in this browser on this device. Save &amp; exit pauses your session; reopening the quiz lets you resume at the same question. Download progress creates a backup file; Load progress restores it on this or another device. Accuracy reflects the most recent submitted attempt for each graded question. Retrying does not erase an earlier attempt until you submit again. Export your progress to keep a record.</p>";
+    "<h2>" +
+    esc(window.EXAM.name) +
+    "</h2><p>" +
+    BANK.length +
+    " questions saved locally. Answers and explanations come from the imported source. Progress is saved separately for each exam. Export a library backup to move exams and progress to another browser.</p>";
   $("#modal").showModal();
 };
 $("#reset-progress").onclick = () => {
@@ -488,13 +479,10 @@ function downloadProgress() {
       [
         JSON.stringify(
           {
-            format: "cysa-practice-progress",
+            format: "exam-study-progress",
             version: 2,
             exported: new Date().toISOString(),
-            source:
-              window.EXAM.id === "cysa-original"
-                ? "QUIZ PRACTICeee.pdf"
-                : window.EXAM.id,
+            source: window.EXAM.id,
             ...state,
           },
           null,
@@ -543,10 +531,7 @@ $("#import-file").onchange = async (e) => {
       throw new Error("This progress file is too large.");
     const incoming = JSON.parse(await file.text());
     if (
-      incoming.source !==
-        (window.EXAM.id === "cysa-original"
-          ? "QUIZ PRACTICeee.pdf"
-          : window.EXAM.id) ||
+      incoming.source !== window.EXAM.id ||
       !incoming.answers ||
       typeof incoming.answers !== "object" ||
       Array.isArray(incoming.answers) ||

@@ -2,23 +2,23 @@
 // Select the bank before loading the shared quiz controller.
 (async () => {
   try {
-    const id =
-      new URLSearchParams(location.search).get("exam") || "cysa-original";
-    if (id === "cysa-original") {
-      window.EXAM = { id, name: "CompTIA CySA+ · Original PDF" };
-      await new Promise((resolve, reject) => {
-        const s = document.createElement("script");
-        s.src = "bank.js";
-        s.onload = resolve;
-        s.onerror = reject;
-        document.body.append(s);
-      });
-    } else {
-      const exam = await ExamStore.get(id);
-      if (!exam) throw new Error("Exam not found. Return to the exam library.");
-      window.EXAM = exam;
-      window.QUESTION_BANK = exam.questions;
+    const id = new URLSearchParams(location.search).get("exam");
+    if (!id) {
+      location.replace("../library.html");
+      return;
     }
+    const stored = await ExamStore.get(id);
+    if (!stored) throw new Error("Exam not found. Return to the exam library.");
+    const exam = QuestionIdentity.deduplicate(stored);
+    const key = "exam-progress:" + id;
+    const saved = localStorage.getItem(key);
+    if (saved)
+      localStorage.setItem(
+        key,
+        JSON.stringify(QuestionIdentity.remapProgress(JSON.parse(saved), exam)),
+      );
+    window.EXAM = exam;
+    window.QUESTION_BANK = exam.questions;
     const bank = window.QUESTION_BANK;
     document.title = window.EXAM.name + " | Exam Study Library";
     document.querySelector(".brand > span:last-child").textContent =
@@ -37,18 +37,8 @@
       ' reviewed <span id="accuracy">— accuracy</span>';
     document.querySelector(".map-help").textContent =
       "Select any number to jump. Progress is separate for each exam.";
-    if (id !== "cysa-original") {
-      document.querySelector(".aside-bottom p").textContent =
-        bank.length + " locally stored questions.";
-      const sidebar = document.querySelector(".aside-bottom");
-      for (const node of sidebar.childNodes) {
-        if (
-          node.nodeType === Node.TEXT_NODE &&
-          node.textContent.includes("BUILT FROM YOUR PDF")
-        )
-          node.textContent = " LOCAL EXAM";
-      }
-    }
+    document.querySelector(".aside-bottom p").textContent =
+      bank.length + " locally stored questions.";
     const s = document.createElement("script");
     s.src = "app.js";
     document.body.append(s);

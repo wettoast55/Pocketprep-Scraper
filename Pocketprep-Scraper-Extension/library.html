@@ -22,14 +22,13 @@
         <h2>Import an exam</h2>
         <p>
           Import a question bank with answers, explanations and embedded images.
-          Your original CySA quiz is included.
         </p>
         <input
           id="file"
           type="file"
           accept=".json,application/json"
           aria-label="Exam JSON file"
-        /><button id="sample">Download example format</button>
+        />
         <p id="message" role="status"></p>
         <p>
           For Pocket Prep, use the extension button while viewing an authorized
@@ -51,14 +50,10 @@
         /></label>
         <p id="backup-message" role="status"></p>
       </section>
-      <p>
-        To move existing CySA progress here, download progress in the original
-        quiz, open CySA above, then select Load progress. Browser extensions use
-        separate storage from localhost.
-      </p>
     </main>
+    <script src="question-identity.js"></script>
     <script src="store.js"></script>
-    <script src="quiz/bank.js"></script>
+
     <script src="backup.js"></script>
     <script src="library.js"></script>
   </body>
