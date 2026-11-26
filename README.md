@@ -74,22 +74,6 @@ Backups include imported questions, explanations, embedded images, source identi
 
 Individual question-bank and progress export/import are also available. Importing a replacement bank clears that bank's current local progress, so use a full library backup when transferring everything.
 
-## Source files
-
-| File                           | Purpose                                                |
-| ------------------------------ | ------------------------------------------------------ |
-| `popup.js`, `page-metadata.js` | Sidebar setup and conservative page metadata detection |
-| `collector.js`                 | Visible question extraction and optional submission    |
-| `question-identity.js`         | Content matching and progress remapping                |
-| `background.js`                | Sequential capture writes                              |
-| `store.js`                     | Bank validation and local storage                      |
-| `backup.js`                    | Portable library backups                               |
-| `library.js`                   | Exam selection and file import/export                  |
-| `quiz/boot.js`, `quiz/app.js`  | Quiz loading, interaction, grading and progress        |
-| `scripts/package.py`           | Creates the source ZIP and checksum with Python 3      |
-
 Source is formatted and commented. No compilation or runtime dependencies are needed. The collector operates on rendered page content and does not read credentials, cookies or hidden application data.
 
 This is an independent practice tool, not an official answer key; we are not affiliated with any exam producing entity nor PocketPrep, check your sources and use at your own discretion.
-
-
