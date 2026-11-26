@@ -1,6 +1,6 @@
 "use strict";
 // The service worker serializes captures to avoid lost updates from overlapping saves.
-importScripts("question-identity.js", "store.js");
+importScripts("question-identity.js", "store.js", "session-manager.js");
 let writes = Promise.resolve();
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
   if (!["saveQuestion", "collectorStatus"].includes(message.type)) return;

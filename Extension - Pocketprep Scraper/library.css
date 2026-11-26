@@ -90,3 +90,5 @@ a:focus-visible {
   outline: 3px solid #d98d00;
   outline-offset: 3px;
 }
+
+.popup { width: auto; max-width: 440px; margin: 0 auto; box-sizing: border-box; } .popup label.check { display:flex; gap:8px; align-items:flex-start; margin:12px 0; } .popup .check input { width:auto; margin:4px 0; } #live-status { background:#e6f1f7; padding:10px; border-radius:4px; }

@@ -2,26 +2,71 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="library.css" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Exam Study Library</title>
+    <link rel="stylesheet" href="sidebar.css" />
   </head>
-  <body class="popup">
-    <h1>Exam Study Library</h1>
-    <button id="open">Open exam library</button>
-    <h2>Pocket Prep collector</h2>
-    <label for="exam">Exam name</label
-    ><input id="exam" autocomplete="off" /><label for="total"
-      >Expected distinct questions</label
-    ><input id="total" type="number" min="1" max="20000" autocomplete="off" />
-    <label for="version">Exam version / code (optional)</label
-    ><input id="version" autocomplete="off" />
-    <label for="version-date">Source version date (optional)</label
-    ><input id="version-date" autocomplete="off" />
-    <button id="collect">Open collector on this page</button>
-    <p id="status" role="status">
-      Sign in to Pocket Prep normally, then open a question. Collection stays on
-      this device.
-    </p>
+  <body>
+    <header>
+      <span class="eyebrow">EXAM STUDY LIBRARY</span>
+      <h1>Your study companion</h1>
+    </header>
+    <main>
+      <section id="home">
+        <button id="open">My saved exams</button>
+        <p class="hint">
+          Practice collected exams, resume your progress, or import and export a
+          backup.
+        </p>
+        <button id="scrape">Start scraping</button>
+        <p class="hint">
+          Collect questions, answers and explanations from your signed-in Pocket
+          Prep exam. Keep Pocket Prep open while collection runs.
+        </p>
+      </section>
+      <section id="collector" hidden>
+        <h2>Question collection</h2>
+        <p id="collecting-exam" hidden></p>
+        <div id="collection-setup">
+          <p class="hint">
+            Enter the full exam total. Collection repeats Build Your Own using
+            new questions only and saves each question automatically.
+          </p>
+          <label for="exam">Exam name</label
+          ><input id="exam" autocomplete="off" />
+          <label for="total">Expected questions</label
+          ><input id="total" type="number" min="1" max="20000" />
+          <div class="optional">
+            <div>
+              <label for="version">Version <small>(optional)</small></label
+              ><input id="version" />
+            </div>
+            <div>
+              <label for="version-date">Date <small>(optional)</small></label
+              ><input id="version-date" />
+            </div>
+          </div>
+          <label class="check"
+            ><input id="allow-history" type="checkbox" /><span
+              >Allow submitting answers to unseen questions<br /><small
+                >This changes Pocket Prep scores and study history.</small
+              ></span
+            ></label
+          >
+        </div>
+        <button id="toggle">Begin question collection</button>
+        <div id="preview-controls">
+          <button id="preview-button" class="secondary">Preview capture</button>
+          <p class="hint">
+            Preview checks the current question without saving it. Pause to
+            preview or change exams. Closing the sidebar keeps collection
+            running.
+          </p>
+          <pre id="preview" hidden aria-label="Captured question preview"></pre>
+        </div>
+      </section>
+      <p id="status" role="status" aria-live="polite"></p>
+    </main>
     <script src="page-metadata.js"></script>
     <script src="popup.js"></script>
   </body>

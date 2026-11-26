@@ -5,12 +5,12 @@
   if (globalThis.__examCollector) return;
   globalThis.__examCollector = true;
   let exam,
-    host,
-    ui,
     config = {},
     running = false,
     stop = false,
-    picking = null;
+    smartMode = false,
+    lastStatus = "",
+    settings = {};
   const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const visible = (el) =>
     el &&
@@ -46,59 +46,22 @@
       return null;
     }
   };
-  function status(s) {
-    ui.querySelector("#status").textContent = s;
+  function pulse() {
+    if (!exam) return;
+    chrome.runtime
+      .sendMessage({
+        type: "sessionPulse",
+        running,
+        smart: smartMode,
+        status: lastStatus,
+      })
+      .catch(() => {});
   }
-  function selector(el) {
-    if (el.id) return "#" + CSS.escape(el.id);
-    const path = [];
-    while (el && el !== document.body) {
-      const siblings = [...el.parentElement.children].filter(
-        (e) => e.tagName === el.tagName,
-      );
-      path.unshift(
-        el.tagName.toLowerCase() +
-          ":nth-of-type(" +
-          (siblings.indexOf(el) + 1) +
-          ")",
-      );
-      el = el.parentElement;
-    }
-    return "body>" + path.join(">");
+  function status(message) {
+    lastStatus = message;
+    pulse();
   }
-  function pick(key) {
-    if (running) return;
-    status(
-      "Click the " + key + " on the Pocket Prep page. Press Escape to cancel.",
-    );
-    picking = key;
-  }
-  document.addEventListener(
-    "keydown",
-    (e) => {
-      if (e.key === "Escape" && picking) {
-        picking = null;
-        status("Selection cancelled.");
-      }
-    },
-    true,
-  );
-  document.addEventListener(
-    "click",
-    async (e) => {
-      if (!picking || e.composedPath().includes(host)) return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      let el = e.target;
-      if (["next", "submit", "reveal"].includes(picking))
-        el = el.closest("button,[role=button],a") || el;
-      config[picking] = selector(el);
-      picking = null;
-      await chrome.storage.local.set({ ["mapping:" + exam.id]: config });
-      status("Page element saved. You can preview the capture before saving.");
-    },
-    true,
-  );
+  setInterval(pulse, 15000);
   function answerElements() {
     return [...document.querySelectorAll("[aria-label]")].filter(
       (el) =>
@@ -183,7 +146,9 @@
   }
   function clickControl(el) {
     if (!el)
-      throw new Error("Control not found. Use the setup buttons to select it.");
+      throw new Error(
+        "The expected quiz control was not found. Collection paused.",
+      );
     const target = el.closest("button,[role=button],a") || el;
     if (
       target.disabled ||
@@ -227,9 +192,7 @@
     const stemEl = get("stem"),
       explanationEl = get("explanation");
     if (!visible(stemEl) || !visible(explanationEl))
-      throw new Error(
-        "Select the question text and expanded explanation using the setup buttons.",
-      );
+      throw new Error("Open a reviewed question with its explanation visible.");
     const stem = stemEl.innerText.trim(),
       explanation = explanationEl.innerText.trim();
     if (!stem || !explanation)
@@ -292,10 +255,10 @@
   async function prepareStudy() {
     if (!visible(get("stem")))
       throw new Error(
-        "Question text not found. Configure the question selector before submitting answers.",
+        "Question text not found. Wait for the quiz to finish loading before retrying.",
       );
     if (answerElements().length || gradedOrder()) return;
-    if (!ui.querySelector("#changeHistory").checked)
+    if (!settings.allowHistory)
       throw new Error(
         "This question is unanswered. Enable the study-history option to submit an answer.",
       );
@@ -303,7 +266,7 @@
       const submit = autoButton(/^Check (?:answer|order)$/i) || get("submit");
       if (!submit)
         throw new Error(
-          "Select the ordering question’s Check Answer control in Page setup, or submit it manually.",
+          "The ordering question’s Check Answer control is unavailable. Wait for the question to load, then retry.",
         );
       clickControl(submit);
       for (let i = 0; i < 60 && !stop && !gradedOrder(); i++) await sleep(250);
@@ -342,7 +305,7 @@
       const submit = autoButton(/^Check Answer$/i) || get("submit");
       if (!submit)
         throw new Error(
-          "The Check Answer button was not found. Select it using Page setup.",
+          "The Check Answer button was not found. Wait for the question to finish loading before retrying.",
         );
       clickControl(submit);
     }
@@ -415,103 +378,154 @@
     );
     return result;
   }
-  // Stop on missing evidence instead of advancing past an incomplete capture.
-  async function collect(all) {
+  // Smart mode walks the same visible quiz controls as a learner. Only the
+  // builder adapter creates another batch; extraction failures always pause.
+  async function collect(all, smart = false) {
     if (running) return;
+    if (smart && !settings.allowHistory && location.pathname !== "/quiz") {
+      status("Enable answer submission before starting Smart Collect.");
+      return;
+    }
     running = true;
     stop = false;
+    smartMode = smart;
+    pulse();
     try {
       const visited = new Set();
-      for (let i = 0; i < exam.expectedCount && !stop; i++) {
+      let batchStartCount = null;
+      while (!stop) {
+        if (smart && location.pathname !== "/quiz") {
+          await ExamSmartFlow.navigateToBuilder(() => stop, status);
+          if (location.pathname !== "/quiz") {
+            if (!settings.allowHistory)
+              throw new Error(
+                "Enable submitting answers to unseen questions to start another batch.",
+              );
+            const current = await chrome.runtime.sendMessage({
+              type: "collectorStatus",
+              exam,
+            });
+            if (current.error) throw new Error(current.error);
+            const built = await ExamSmartFlow.build(() => stop, status);
+            if (built.exhausted) {
+              status(
+                "No new questions remain. " +
+                  current.count +
+                  " / " +
+                  exam.expectedCount +
+                  " saved." +
+                  (current.count < exam.expectedCount
+                    ? " Previously seen questions may still need collection from Review."
+                    : ""),
+              );
+              break;
+            }
+            batchStartCount = current.count;
+          }
+        }
+        // Resuming a saved quiz changes the URL before its question is mounted.
+        await ExamSmartFlow.wait(
+          () => visible(get("stem")),
+          () => stop,
+          "question content",
+          30000,
+        );
         const before = identity();
         if (visited.has(before))
           throw new Error("This question set looped back to an earlier item.");
         visited.add(before);
         const result = await saveOne();
-        if (!all || result.count >= exam.expectedCount) break;
-        if (stop) break;
-        clickControl(get("next") || autoButton(/^Next question$/i));
-        let changed = false;
-        for (let j = 0; j < 40 && !stop; j++) {
-          await sleep(250);
-          if (identity() && identity() !== before) {
-            changed = true;
+        if (!all || stop) break;
+        if (smart && ExamSmartFlow.find(/^Submit Quiz$/i)) {
+          if (batchStartCount !== null && result.count === batchStartCount)
+            throw new Error(
+              "The last batch added no new captures. Collection paused.",
+            );
+          await ExamSmartFlow.finish(() => stop, status);
+          if (result.count >= exam.expectedCount) {
+            status(
+              "Collection complete. " +
+                result.count +
+                " distinct questions saved.",
+            );
             break;
           }
+          continue;
         }
-        if (!changed && !stop)
-          throw new Error(
-            "Next question did not load. Saved questions are retained.",
+        if (result.count >= exam.expectedCount) {
+          status(
+            "Collection complete. " +
+              result.count +
+              " distinct questions saved.",
           );
+          break;
+        }
+        clickControl(autoButton(/^Next question$/i) || get("next"));
+        await ExamSmartFlow.wait(
+          () => identity() && identity() !== before,
+          () => stop,
+          "next question",
+        );
         await sleep(600);
       }
-    } catch (e) {
-      status("Paused: " + e.message + " Earlier captures are saved.");
+    } catch (error) {
+      status("Paused: " + error.message + " Earlier captures are saved.");
     } finally {
       running = false;
+      smartMode = false;
+      pulse();
     }
   }
-  chrome.runtime.onMessage.addListener((m, s, reply) => {
-    if (m.type !== "openCollector") return;
+  // The content script has no separate window or widget. The browser sidebar
+  // owns setup, preview, status and the single begin/pause control.
+  chrome.runtime.onMessage.addListener((message, sender, reply) => {
+    if (message.type === "collectorCommand") {
+      if (message.command === "stop") {
+        stop = true;
+        status("Pausing after the current operation.");
+        reply({ ok: true });
+      } else if (message.command === "smart") {
+        collect(true, true);
+        reply({ ok: true });
+      } else if (message.command === "preview") {
+        if (running) {
+          reply({ error: "Pause collection before previewing." });
+          return;
+        }
+        (async () => {
+          await reveal();
+          return { question: await extract() };
+        })().then(reply, (error) => reply({ error: error.message }));
+        return true;
+      }
+      return;
+    }
+    if (message.type !== "openCollector") return;
     if (running) {
       reply({ ok: true });
       return;
     }
-    exam = m.exam;
-    open().then(() => reply({ ok: true }));
-    return true;
-  });
-  async function open() {
-    config =
-      (await chrome.storage.local.get("mapping:" + exam.id))[
-        "mapping:" + exam.id
-      ] || {};
-    host?.remove();
-    host = document.createElement("div");
-    host.id = "exam-study-collector";
-    document.documentElement.append(host);
-    ui = host.attachShadow({ mode: "open" });
-    ui.innerHTML = `<style>:host{all:initial}section{position:fixed;right:12px;top:12px;width:350px;max-height:90vh;overflow:auto;z-index:2147483647;background:white;color:#172b40;border:2px solid #205985;box-shadow:0 4px 24px #0005;border-radius:8px;padding:16px;font:14px/1.5 Arial}button{background:#205985;color:white;border:0;border-radius:3px;padding:8px;margin:4px;cursor:pointer;font:inherit}h2{font-size:18px;margin:0}p{margin:10px 0}label{display:block}#status{white-space:pre-wrap}details{margin:12px 0}#preview{width:100%;height:160px;box-sizing:border-box;font:12px monospace}</style><section><h2></h2><p id="status">Collector ready. Configure the question and explanation once, then preview.</p><details open><summary>Page setup</summary><button data-pick="stem">Pick question text</button><button data-pick="explanation">Pick explanation text</button><button data-pick="images">Pick evidence area (optional)</button><button data-pick="next">Pick next control</button><button data-pick="submit">Pick submit control</button><button data-pick="reveal">Pick explanation toggle</button><p>Expand the explanation first. Click the text area itself. Choices are read from Pocket Prep's Correct/Incorrect Answer labels.</p></details><label><input id="changeHistory" type="checkbox"> Allow submitting answers to unseen questions. This changes Pocket Prep scores and history.</label><button id="previewButton">Preview capture</button><textarea id="preview" readonly aria-label="Captured question preview" hidden></textarea><button id="one">Save this question</button><button id="all">Collect from here</button><button id="stop">Stop</button><button id="close">Close</button><p>Keep this tab open. Stops on unsupported layouts, missing evidence, login changes or the end of this question set. Reopen to resume; saved questions are deduplicated.</p></section>`;
-    ui.querySelector("h2").textContent = exam.name + " collector";
-    for (const b of ui.querySelectorAll("[data-pick]"))
-      b.onclick = () => pick(b.dataset.pick);
-    ui.querySelector("#previewButton").onclick = async () => {
-      try {
-        await reveal();
-        const q = await extract();
-        const p = ui.querySelector("#preview");
-        p.hidden = false;
-        p.value = JSON.stringify(q, null, 2);
-        status(
-          "Check the captured text and correct choices before collecting.",
-        );
-      } catch (e) {
-        status(e.message);
-      }
-    };
-    ui.querySelector("#one").onclick = () => collect(false);
-    ui.querySelector("#all").onclick = () => collect(true);
-    ui.querySelector("#stop").onclick = () => {
-      stop = true;
+    exam = message.exam;
+    settings = message.settings || {};
+    (async () => {
+      config =
+        (await chrome.storage.local.get("mapping:" + exam.id))[
+          "mapping:" + exam.id
+        ] || {};
+      const result = await chrome.runtime.sendMessage({
+        type: "collectorStatus",
+        exam,
+      });
+      if (result.error) throw new Error(result.error);
       status(
-        "Stopping after the current operation. Saved questions are retained.",
-      );
-    };
-    ui.querySelector("#close").onclick = () => {
-      stop = true;
-      picking = null;
-      host.remove();
-    };
-    const result = await chrome.runtime.sendMessage({
-      type: "collectorStatus",
-      exam,
-    });
-    status(
-      result.error ||
-        (result.count || 0) +
+        result.count +
           " / " +
           exam.expectedCount +
-          " distinct questions saved. Configure and preview before collecting.",
-    );
-  }
+          " distinct questions saved.",
+      );
+      reply({ ok: true });
+      if (message.resume) collect(true, Boolean(settings.smart));
+    })().catch((error) => reply({ error: error.message }));
+    return true;
+  });
 })();

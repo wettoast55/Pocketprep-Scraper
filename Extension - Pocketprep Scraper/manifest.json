@@ -1,17 +1,27 @@
 {
   "manifest_version": 3,
   "name": "Exam Study Library",
-  "version": "0.3.0",
+  "version": "0.5.1",
   "description": "Local exam library with saved progress and authorized question imports.",
-  "permissions": ["storage", "unlimitedStorage", "activeTab", "scripting"],
+  "permissions": [
+    "storage",
+    "unlimitedStorage",
+    "activeTab",
+    "scripting",
+    "power",
+    "alarms",
+    "sidePanel"
+  ],
   "background": {
     "service_worker": "background.js"
   },
   "action": {
-    "default_popup": "popup.html",
     "default_title": "Exam Study Library"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'; img-src 'self' data:; connect-src 'self'"
+  },
+  "side_panel": {
+    "default_path": "popup.html"
   }
 }

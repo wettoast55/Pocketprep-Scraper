@@ -1,37 +1,63 @@
-# Exam Study Library 0.3.0
+# Exam Study Library 0.5.1
 
-A local study extension for Microsoft Edge and Google Chrome, with immediate feedback, ordering questions and saved progress. A fresh installation starts empty. No question banks, sample exams, evidence images or test fixtures are bundled.
+Collect authorized Pocket Prep questions and practice them locally in Edge or Chrome. The extension opens in the browser sidebar: setup, preview, progress and collection share one interface. A fresh installation contains no exams or test data.
 
-## Install or update
+## Known issues / to-do
 
-1. Export a library backup from your existing installation before updating.
-2. Extract the ZIP to a permanent folder.
-3. Open `edge://extensions` or `chrome://extensions` and enable **Developer mode**.
-4. For a new installation, choose **Load unpacked** and select the folder containing `manifest.json`.
-5. For an update, replace the files in your existing installed extension folder and click **Reload**. Keep that folder's location to retain its browser storage.
-6. Refresh Pocket Prep and reopen the collector. Already injected tabs keep their old collector until refreshed.
+Original project checklist retained for review; items are not marked complete automatically.
 
-Installation follows the [Edge instructions](https://learn.microsoft.com/en-us/microsoft-edge/extensions/getting-started/extension-sideloading) and [Chrome instructions](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world).
+- [ ] Improve detection of exam title, number, version and date; avoid retyping after closing the collector and remove the old CCNA / 650 defaults.
+- [ ] Make collection controls movable or minimizable so they do not cover Submit at the end of a quiz.
+- [ ] Improve “Open exam library” or show saved exams and question counts without opening a new page.
+- [ ] Add exam removal and star / unstar controls.
+- [ ] Clear the old CySA exam and show an import note when the library is empty.
 
-The ZIP contains application source, documentation and a packaging script only. Removing the extension can remove its browser data. Collected exams are transferred with a library backup, not with the extension ZIP.
+## Download, install and update
 
-## Collect authorized questions
+1. Open the [newest release](https://github.com/wettoast55/Pocketprep-Scraper/releases/latest). Expand **Assets** and download the extension ZIP attached to that release. The local build may be newer than the published release until its maintainer uploads it.
+2. Extract the ZIP into a permanent folder. If using GitHub's **Source code (zip)** instead, locate `Extension - Pocketprep Scraper` inside the extracted repository. Select whichever folder directly contains `manifest.json`.
+3. In Edge, open `edge://extensions`. In Chrome, open `chrome://extensions`.
+4. Turn on **Developer mode**. Edge may put this inside the Extensions menu on a narrow window; Chrome shows it at the top right.
+5. Click **Load unpacked** and select the extracted extension folder. Pin **Exam Study Library** from your browser's Extensions menu if desired.
+6. To update: export a library backup first, replace the files in the same installed folder, then click **Reload** on the extension card. Refresh Pocket Prep and reopen the extension. Keep the folder location unchanged to preserve its browser storage.
 
-Open a question in your signed-in Pocket Prep account, then open the extension toolbar button.
+![Illustrated download and installation steps](docs/images/install.svg)
 
-The popup reads visible, unambiguous exam details. Missing name, bank total, version/code or source version date remain blank. A quiz counter such as “4 / 250” is not treated as the full bank total. A copyright year and the current date are not treated as an exam version date. Enter missing name and full bank total manually; version and source date are optional. Explicitly different versions use separate libraries.
+The diagram is an installation guide, not a screenshot. Official instructions: [Edge](https://learn.microsoft.com/en-us/microsoft-edge/extensions/getting-started/extension-sideloading) and [Chrome](https://developer.chrome.com/docs/extensions/get-started/tutorial/hello-world). The sidebar uses the browsers' [Side Panel support](https://learn.microsoft.com/en-us/microsoft-edge/extensions/developer-guide/sidebar).
 
-Choose **Open collector on this page**, then:
+## Two starting choices
 
-- **Preview capture** inspects the detected content.
-- **Save this question** captures one item.
-- **Collect from here** saves and advances through the current set, including already-collected items without saving them twice.
-- **Allow submitting answers** enables answer submission to reveal source feedback. This changes Pocket Prep scores and history.
-- **Stop** ends collection without discarding earlier captures.
+| Button             | What it does                                                       |
+| ------------------ | ------------------------------------------------------------------ |
+| **My saved exams** | Opens the library for practice, bank imports, exports and backups. |
+| **Start scraping** | Opens setup and collection controls in this same sidebar.          |
 
-Multiple-choice and ordering formats are supported. Ordering lists support 2–100 items. The collector retries incomplete rendering and requires two matching snapshots before saving. Missing evidence, an unsupported layout, a repeated navigation loop or the end of the set pauses collection. It does not automatically create another quiz after a set ends.
+![Illustrated home and collection controls](docs/images/collection.svg)
 
-If a layout still fails, the pause message identifies the missing evidence. Do not assume a partial bank contains the entire exam.
+## Collect questions
+
+1. Sign in to Pocket Prep, select the intended exam and open **Study**, **Build Your Own**, an existing quiz, or its results screen.
+2. Click the extension icon, then **Start scraping**.
+3. Check **Exam name** and **Expected questions** (the full bank total, not the current quiz size). **Version** and **Date** are optional. Unavailable source metadata remains blank; the extension does not assume CCNA or 650 questions.
+4. Enable **Allow submitting answers to unseen questions** when collecting new questions. This allows automatic answer submission to reveal feedback and changes Pocket Prep scores/history.
+5. Click **Begin question collection**. That same button becomes **End / pause question collection** while running. While running, setup fields are replaced by the exam name, version/date when supplied, and live status. Pausing restores the fields and keeps every saved question.
+
+The collector resumes unfinished quizzes, selects all subjects, chooses **New Questions**, unchecks **Answered**, **Flagged** and **Incorrect**, and uses the site's maximum available batch size. At the end it submits the quiz, closes results, opens **Build Your Own**, and repeats. It stops at the configured total, when no new questions remain, or on a capture/navigation error. Previously seen questions missing from the library are not included in a new-only batch; the status reports that gap.
+
+**Preview capture** displays the current reviewed question and explanation without saving it. Pause before previewing. It does not submit an answer by itself. There are no separate Save question, Collect from here, Stop or Hide controls, and no floating page widget.
+
+The sidebar remains open when focus changes. Typed settings survive closing/reopening it in the same browser session. Closing the sidebar does not stop collection; closing the source tab or browser does. The computer is kept awake while a live collection is running, and that request is released after pause/completion. This does not prevent browser tab throttling or make the window always on top. After a browser restart, reopen Pocket Prep and begin again; saved questions and practice progress remain available.
+
+## Library and practice controls
+
+- **Study / Resume** opens an exam and restores its saved progress.
+- **Export question bank** downloads one exam for import elsewhere.
+- **Import an exam** loads a question-bank JSON file; a fresh library starts empty.
+- **Export library backup** saves all exams and their progress together.
+- **Restore library backup** restores that backup in Edge or Chrome; close quiz tabs first.
+- Inside a quiz, select an answer (or arrange ordering items), then check it for immediate feedback. Navigation, flagging and progress export/import remain available.
+
+Multiple-choice and ordering questions are supported. Ordering lists support 2–100 items. The collector waits for stable question content before saving and pauses rather than skipping unsupported content.
 
 ## Duplicate handling
 
@@ -43,7 +69,7 @@ Existing duplicates are consolidated when opening the library or quiz, exporting
 
 Choose **Export library backup** in the source browser. Install the extension in the destination browser and use **Restore library backup**. Close quiz tabs before restoring. Matching exams and progress are replaced; other exams remain unchanged.
 
-Backups include imported questions, explanations, embedded images, source identifiers, metadata and progress. They exclude passwords, cookies and sign-in sessions. Sign in normally in each browser for further collection. Collector page-setup selections stay browser-local.
+Backups include imported questions, explanations, embedded images, source identifiers, metadata and progress. They exclude passwords, cookies and sign-in sessions. Sign in normally in each browser for further collection. Collector settings stay browser-local.
 
 Individual question-bank and progress export/import are also available. Importing a replacement bank clears that bank's current local progress, so use a full library backup when transferring everything.
 
@@ -51,7 +77,7 @@ Individual question-bank and progress export/import are also available. Importin
 
 | File                           | Purpose                                                |
 | ------------------------------ | ------------------------------------------------------ |
-| `popup.js`, `page-metadata.js` | Toolbar setup and conservative page metadata detection |
+| `popup.js`, `page-metadata.js` | Sidebar setup and conservative page metadata detection |
 | `collector.js`                 | Visible question extraction and optional submission    |
 | `question-identity.js`         | Content matching and progress remapping                |
 | `background.js`                | Sequential capture writes                              |
@@ -64,3 +90,5 @@ Individual question-bank and progress export/import are also available. Importin
 Source is formatted and commented. No compilation or runtime dependencies are needed. The collector operates on rendered page content and does not read credentials, cookies or hidden application data.
 
 This is an independent practice tool, not an official answer key.
+
+
